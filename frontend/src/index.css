@@ -1,0 +1,584 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* ==========================================================================
+   EduPulse Academic Design System - 100% High-Contrast Themes
+   Light (Crisp Academic), Medium (Executive Slate), Dark (Obsidian Midnight)
+   ========================================================================== */
+
+:root, [data-theme="light"] {
+  /* High-Contrast Royal Navy */
+  --primary-color: #1D4ED8;
+  --primary-hover: #1E40AF;
+  --primary-light: #EFF6FF;
+  --primary-border: #93C5FD;
+  --secondary-color: #2563EB;
+
+  /* Surfaces - Pure Crisp Contrast */
+  --bg-main: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-soft: #F1F5F9;
+  --bg-hover: #E2E8F0;
+  --border-color: #CBD5E1;
+
+  /* Typography - Bold Deep Midnight Slate (Maximum Contrast) */
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
+  --text-light: #94A3B8;
+
+  /* Status */
+  --status-success: #15803D;
+  --status-warning: #B45309;
+  --status-danger: #B91C1C;
+}
+
+/* Medium Mode: Executive Slate Theme (Distinct from Light & Dark) */
+[data-theme="medium"] {
+  --primary-color: #38BDF8;
+  --primary-hover: #0EA5E9;
+  --primary-light: #0C4A6E;
+  --primary-border: #0284C7;
+  --secondary-color: #38BDF8;
+
+  /* Rich Slate Surfaces */
+  --bg-main: #1E293B;
+  --bg-surface: #0F172A;
+  --bg-card: #334155;
+  --bg-soft: #273549;
+  --bg-hover: #3E4F69;
+  --border-color: #475569;
+
+  /* Bright Contrast Typography */
+  --text-primary: #FFFFFF;
+  --text-secondary: #E2E8F0;
+  --text-muted: #94A3B8;
+  --text-light: #CBD5E1;
+
+  --status-success: #22C55E;
+  --status-warning: #F59E0B;
+  --status-danger: #EF4444;
+}
+
+/* Dark Mode: Deep Academic Midnight Obsidian */
+[data-theme="dark"] {
+  --primary-color: #60A5FA;
+  --primary-hover: #3B82F6;
+  --primary-light: #1E3A8A;
+  --primary-border: #2563EB;
+  --secondary-color: #93C5FD;
+
+  /* Deep Midnight Surfaces */
+  --bg-main: #090D1A;
+  --bg-surface: #0F172A;
+  --bg-card: #131C2E;
+  --bg-soft: #1A253C;
+  --bg-hover: #22314E;
+  --border-color: #2E3D5C;
+
+  /* Pure White Crisp Typography */
+  --text-primary: #FFFFFF;
+  --text-secondary: #E2E8F0;
+  --text-muted: #94A3B8;
+  --text-light: #64748B;
+
+  --status-success: #4ADE80;
+  --status-warning: #FBBF24;
+  --status-danger: #F87171;
+}
+
+/* Dynamic Color Accent Palettes */
+[data-color="saffron"] {
+  --primary-color: #D97706;
+  --primary-hover: #B45309;
+  --primary-light: #FEF3C7;
+  --primary-border: #FCD34D;
+  --secondary-color: #F59E0B;
+}
+[data-theme="dark"][data-color="saffron"], [data-theme="medium"][data-color="saffron"] {
+  --primary-color: #F59E0B;
+  --primary-hover: #D97706;
+  --primary-light: #451A03;
+  --primary-border: #78350F;
+}
+
+[data-color="emerald"] {
+  --primary-color: #059669;
+  --primary-hover: #047857;
+  --primary-light: #ECFDF5;
+  --primary-border: #A7F3D0;
+  --secondary-color: #10B981;
+}
+[data-theme="dark"][data-color="emerald"], [data-theme="medium"][data-color="emerald"] {
+  --primary-color: #34D399;
+  --primary-hover: #059669;
+  --primary-light: #064E3B;
+  --primary-border: #065F46;
+}
+
+[data-color="indigo"] {
+  --primary-color: #4F46E5;
+  --primary-hover: #4338CA;
+  --primary-light: #EEF2FF;
+  --primary-border: #C7D2FE;
+  --secondary-color: #6366F1;
+}
+[data-theme="dark"][data-color="indigo"], [data-theme="medium"][data-color="indigo"] {
+  --primary-color: #818CF8;
+  --primary-hover: #6366F1;
+  --primary-light: #1E1B4B;
+  --primary-border: #312E81;
+}
+
+/* Global Reset */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg-main) !important;
+  color: var(--text-primary) !important;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+}
+
+/* Solid Sticky Header - Guaranteed 100% Opaque & Stacking Isolation */
+header, .site-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 9999 !important;
+  background-color: var(--bg-surface) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+  isolation: isolate !important;
+  backdrop-filter: none !important;
+}
+
+/* National Tricolor Line */
+.tricolor-stripe {
+  height: 3px;
+  background: linear-gradient(90deg, #FF9933 0%, #FF9933 33.3%, #FFFFFF 33.3%, #FFFFFF 66.6%, #138808 66.6%, #138808 100%);
+}
+
+/* 100% Opaque Floating Dropdowns & Popovers */
+.inst-dropdown {
+  background-color: var(--bg-surface) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.4), 0 6px 12px -2px rgba(0, 0, 0, 0.25) !important;
+  z-index: 99999 !important;
+  isolation: isolate !important;
+  opacity: 1 !important;
+  backdrop-filter: none !important;
+}
+
+[data-theme="light"] .inst-dropdown {
+  background-color: #FFFFFF !important;
+  border-color: #CBD5E1 !important;
+  box-shadow: 0 16px 32px -4px rgba(15, 23, 42, 0.15), 0 4px 10px -2px rgba(15, 23, 42, 0.08) !important;
+}
+
+[data-theme="medium"] .inst-dropdown {
+  background-color: #0F172A !important;
+  border-color: #475569 !important;
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.5), 0 6px 16px -2px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-theme="dark"] .inst-dropdown {
+  background-color: #0F172A !important;
+  border-color: #2E3D5C !important;
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.6), 0 6px 16px -2px rgba(0, 0, 0, 0.4) !important;
+}
+
+
+/* Institutional Cards */
+.inst-card {
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border-radius: 0.75rem;
+  position: relative;
+  color: var(--text-primary) !important;
+}
+
+.inst-card-hover {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.inst-card-hover:hover {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+/* Data Tables */
+.inst-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.inst-table th {
+  background-color: var(--bg-soft) !important;
+  color: var(--text-secondary) !important;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-color) !important;
+  text-align: left;
+}
+
+.inst-table td {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--border-color) !important;
+  font-size: 0.8125rem;
+  color: var(--text-primary) !important;
+}
+
+.inst-table tr:hover td {
+  background-color: var(--bg-hover) !important;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-soft);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Print Rules */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .inst-card {
+    box-shadow: none !important;
+    border: 1px solid #000 !important;
+  }
+}
+
+/* ==========================================================================\n   EDUPULSE PORTAL — MODERN DARK SAAS EXPERIENCE\n   Scoped to authenticated dashboards so the existing public/login experience\n   remains intact.\n   ========================================================================== */
+.ep-portal {
+  --bg-main: #050816;
+  --bg-surface: #090f1d;
+  --bg-card: #0d1424;
+  --bg-soft: #0a1120;
+  --bg-hover: #141e33;
+  --border-color: rgba(148, 163, 184, 0.12);
+  --primary-color: #818cf8;
+  --primary-hover: #6366f1;
+  --primary-light: rgba(99, 102, 241, 0.12);
+  --primary-border: rgba(129, 140, 248, 0.28);
+  --secondary-color: #22d3ee;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
+  --text-light: #475569;
+  --status-success: #34d399;
+  --status-warning: #fbbf24;
+  --status-danger: #fb7185;
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(99, 102, 241, 0.10), transparent 26%),
+    radial-gradient(circle at 92% 12%, rgba(6, 182, 212, 0.06), transparent 23%),
+    var(--bg-main);
+  color: var(--text-primary);
+}
+
+.ep-portal::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image: linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, black, transparent 70%);
+}
+
+.ep-portal .site-header,
+.ep-portal .ep-header {
+  background: rgba(5, 8, 22, 0.88) !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.10) !important;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.22) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+}
+
+.ep-portal .tricolor-stripe {
+  opacity: 0.85;
+  height: 2px;
+}
+
+.ep-portal .inst-card {
+  background: linear-gradient(145deg, rgba(17, 26, 45, 0.96), rgba(9, 15, 29, 0.96)) !important;
+  border: 1px solid rgba(148, 163, 184, 0.11) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 14px 38px rgba(0,0,0,.16), inset 0 1px rgba(255,255,255,.02) !important;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.ep-portal .inst-card:hover {
+  border-color: rgba(129, 140, 248, 0.25) !important;
+  box-shadow: 0 20px 45px rgba(0,0,0,.22), 0 0 0 1px rgba(99,102,241,.03) !important;
+}
+
+.ep-portal .inst-table th {
+  background: rgba(255,255,255,.025) !important;
+  color: #64748b !important;
+  border-bottom-color: rgba(148,163,184,.10) !important;
+}
+
+.ep-portal .inst-table td {
+  color: #cbd5e1 !important;
+  border-bottom-color: rgba(148,163,184,.07) !important;
+}
+
+.ep-portal .inst-table tr:hover td {
+  background: rgba(99,102,241,.035) !important;
+}
+
+.ep-portal .ep-sidebar {
+  background: rgba(7, 11, 22, 0.88);
+  border-right: 1px solid rgba(148,163,184,.09);
+  min-height: calc(100vh - 93px);
+  position: sticky;
+  top: 93px;
+}
+
+.ep-brand-mini {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(99,102,241,.10), rgba(6,182,212,.035));
+  border: 1px solid rgba(129,140,248,.12);
+}
+
+.ep-brand-mark {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: white;
+  background: linear-gradient(135deg, #6366f1, #06b6d4);
+  box-shadow: 0 8px 20px rgba(99,102,241,.22);
+}
+
+.ep-role-card {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(148,163,184,.09);
+  background: rgba(255,255,255,.025);
+}
+
+.ep-role-icon {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  color: #a5b4fc;
+  background: rgba(99,102,241,.10);
+}
+
+.ep-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 42px;
+  padding: 10px 11px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all .18s ease;
+}
+
+.ep-sidebar-item:hover {
+  color: #f8fafc;
+  background: rgba(255,255,255,.035);
+  border-color: rgba(148,163,184,.07);
+  transform: translateX(2px);
+}
+
+.ep-sidebar-item.active {
+  color: #c7d2fe;
+  background: linear-gradient(90deg, rgba(99,102,241,.17), rgba(99,102,241,.045));
+  border-color: rgba(99,102,241,.16);
+  box-shadow: inset 3px 0 #6366f1, 0 8px 22px rgba(0,0,0,.10);
+}
+
+.ep-sidebar-item.active svg:first-child {
+  color: #818cf8;
+}
+
+.ep-nav-arrow {
+  opacity: 0;
+  color: #6366f1;
+  transition: opacity .18s ease;
+}
+
+.ep-sidebar-item:hover .ep-nav-arrow,
+.ep-sidebar-item.active .ep-nav-arrow {
+  opacity: .65;
+}
+
+.ep-system-card {
+  padding: 12px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(16,185,129,.06), rgba(255,255,255,.02));
+  border: 1px solid rgba(52,211,153,.10);
+}
+
+.ep-live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #34d399;
+  box-shadow: 0 0 10px rgba(52,211,153,.7);
+}
+
+.ep-stat-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.ep-stat-card::after {
+  content: '';
+  position: absolute;
+  right: -34px;
+  top: -38px;
+  width: 110px;
+  height: 110px;
+  border-radius: 999px;
+  background: rgba(99,102,241,.055);
+  pointer-events: none;
+}
+
+.ep-stat-icon {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.06);
+}
+
+.ep-stat-primary { color:#a5b4fc; background:rgba(99,102,241,.10); }
+.ep-stat-cyan { color:#67e8f9; background:rgba(6,182,212,.10); }
+.ep-stat-success { color:#6ee7b7; background:rgba(16,185,129,.10); }
+.ep-stat-warning { color:#fcd34d; background:rgba(245,158,11,.10); }
+.ep-stat-danger { color:#fda4af; background:rgba(239,68,68,.10); }
+
+.ep-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  color: #6ee7b7;
+  background: rgba(16,185,129,.08);
+  font-weight: 700;
+}
+
+.ep-footer {
+  background: rgba(5,8,22,.55);
+  border-top: 1px solid rgba(148,163,184,.08);
+}
+
+.ep-page-enter {
+  animation: epPageEnter .35s ease both;
+}
+
+@keyframes epPageEnter {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Common utility overrides inside the dark portal. */
+.ep-portal .bg-white,
+.ep-portal .bg-surface-card { background-color: var(--bg-card) !important; }
+.ep-portal .bg-surface,
+.ep-portal .bg-surface-soft { background-color: var(--bg-surface) !important; }
+.ep-portal .border-surface-border { border-color: var(--border-color) !important; }
+.ep-portal .text-ink-primary { color: var(--text-primary) !important; }
+.ep-portal .text-ink-secondary { color: var(--text-secondary) !important; }
+.ep-portal .text-ink-muted { color: var(--text-muted) !important; }
+.ep-portal .text-ink-light { color: var(--text-light) !important; }
+
+.ep-portal .bg-primary-50,
+.ep-portal .bg-primary-50\/40,
+.ep-portal .bg-primary-50\/60 { background-color: rgba(99,102,241,.10) !important; }
+
+.ep-portal .bg-emerald-50,
+.ep-portal .bg-emerald-50\/70 { background-color: rgba(16,185,129,.09) !important; }
+.ep-portal .bg-amber-50 { background-color: rgba(245,158,11,.09) !important; }
+.ep-portal .bg-blue-50 { background-color: rgba(59,130,246,.09) !important; }
+.ep-portal .bg-rose-50 { background-color: rgba(244,63,94,.09) !important; }
+.ep-portal .bg-slate-100 { background-color: rgba(148,163,184,.10) !important; }
+
+.ep-portal .text-emerald-700,
+.ep-portal .text-emerald-800 { color: #6ee7b7 !important; }
+.ep-portal .text-amber-700,
+.ep-portal .text-amber-800 { color: #fcd34d !important; }
+.ep-portal .text-blue-800 { color: #93c5fd !important; }
+.ep-portal .text-rose-800 { color: #fda4af !important; }
+.ep-portal .text-slate-800 { color: #cbd5e1 !important; }
+
+.ep-portal .border-emerald-200,
+.ep-portal .border-amber-200,
+.ep-portal .border-blue-200,
+.ep-portal .border-rose-200,
+.ep-portal .border-slate-300 { border-color: rgba(148,163,184,.16) !important; }
+
+.ep-portal .recharts-cartesian-grid-horizontal line,
+.ep-portal .recharts-cartesian-grid-vertical line {
+  stroke: rgba(148,163,184,.08) !important;
+}
+
+.ep-portal .recharts-text,
+.ep-portal .recharts-cartesian-axis-tick-value {
+  fill: #64748b !important;
+}
+
+@media (max-width: 767px) {
+  .ep-portal .ep-sidebar { display: none; }
+  .ep-portal main { padding: 16px !important; }
+}
