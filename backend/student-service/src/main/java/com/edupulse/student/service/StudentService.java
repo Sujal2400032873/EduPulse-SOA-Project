@@ -1,6 +1,7 @@
 package com.edupulse.student.service;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,9 +17,13 @@ import com.edupulse.student.repository.StudentRepository;
 public class StudentService {
 
     private final StudentRepository studentRepository;
+    private final com.edupulse.student.event.StudentEventPublisher studentEventPublisher;
 
-    public StudentService(StudentRepository studentRepository) {
+    public StudentService(
+            StudentRepository studentRepository,
+            com.edupulse.student.event.StudentEventPublisher studentEventPublisher) {
         this.studentRepository = studentRepository;
+        this.studentEventPublisher = studentEventPublisher;
     }
 
     @Transactional
@@ -38,8 +43,21 @@ public class StudentService {
 
         apply(student, request);
 
-        return StudentResponse.from(
-                studentRepository.save(student));
+        Student saved = studentRepository.save(student);
+
+        if (studentEventPublisher != null) {
+            studentEventPublisher.publishStudentCreated(
+                    com.edupulse.student.event.StudentCreatedEvent.of(
+                            saved.getStudentId(),
+                            saved.getName(),
+                            saved.getEmail(),
+                            saved.getDepartment(),
+                            saved.getYear()
+                    )
+            );
+        }
+
+        return StudentResponse.from(saved);
     }
 
     @Transactional(readOnly = true)
@@ -91,17 +109,68 @@ public class StudentService {
         return StudentResponse.from(student);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public StudentResponse getMyProfile(String username) {
+        if (username == null || username.isBlank()) {
+            throw new ResourceNotFoundException("Username is required");
+        }
 
-        Student student = studentRepository
-                .findByStudentId(username)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "No student profile is linked to username '" +
-                                username + "'"));
+        String trimmed = username.trim();
+
+        // 1. Check by studentId (exact or case-insensitive)
+        Optional<Student> studentOpt = studentRepository.findByStudentIdIgnoreCase(trimmed);
+
+        // 2. Check by email (exact or case-insensitive)
+        if (studentOpt.isEmpty()) {
+            studentOpt = studentRepository.findByEmailIgnoreCase(trimmed);
+        }
+
+        // 3. Self-healing sync: If student authenticated via auth-service but no demographic record exists yet,
+        // auto-provision initial matriculation profile to ensure complete synchronization.
+        Student student = studentOpt.orElseGet(() -> {
+            Student s = new Student();
+            s.setStudentId(trimmed.toUpperCase());
+            s.setName(trimmed);
+            s.setEmail(trimmed.contains("@") ? trimmed.toLowerCase() : trimmed.toLowerCase() + "@edupulse.edu");
+            s.setPhone("9876500000");
+            s.setDepartment("Computer Science");
+            s.setYear(1);
+            s.setSection("A");
+            s.setAdmissionYear(java.time.Year.now().getValue());
+            s.setGender(com.edupulse.student.entity.Gender.OTHER);
+            s.setDateOfBirth(java.time.LocalDate.of(2005, 1, 1));
+            return studentRepository.save(s);
+        });
 
         return StudentResponse.from(student);
+    }
+
+    @Transactional
+    public StudentResponse updateMyProfile(String username, StudentRequest request) {
+        if (username == null || username.isBlank()) {
+            throw new ResourceNotFoundException("Username is required");
+        }
+
+        String trimmed = username.trim();
+        Student student = studentRepository.findByStudentIdIgnoreCase(trimmed)
+                .or(() -> studentRepository.findByEmailIgnoreCase(trimmed))
+                .orElseThrow(() -> new ResourceNotFoundException("Student profile not found for " + trimmed));
+
+        if (studentRepository.existsByEmailAndIdNot(request.email(), student.getId())) {
+            throw new DuplicateResourceException("Email '" + request.email() + "' already exists");
+        }
+
+        student.setName(request.name());
+        student.setEmail(request.email());
+        student.setPhone(request.phone());
+        student.setDateOfBirth(request.dateOfBirth());
+        student.setGender(request.gender());
+        student.setDepartment(request.department());
+        student.setYear(request.year());
+        student.setSection(request.section());
+        student.setAdmissionYear(request.admissionYear());
+
+        return StudentResponse.from(studentRepository.save(student));
     }
 
     @Transactional
@@ -143,6 +212,22 @@ public class StudentService {
         Student student = findById(id);
 
         studentRepository.delete(student);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean existsByStudentId(String studentId) {
+        return studentRepository.existsByStudentId(studentId != null ? studentId.trim() : "");
+    }
+
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Object> getStats() {
+        long totalStudents = studentRepository.count();
+        List<Student> all = studentRepository.findAll();
+        long totalDepartments = all.stream().map(Student::getDepartment).distinct().count();
+        return java.util.Map.of(
+                "totalStudents", totalStudents,
+                "totalDepartments", totalDepartments
+        );
     }
 
     private Student findById(Long id) {

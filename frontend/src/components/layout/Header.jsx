@@ -2,16 +2,17 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   GraduationCap, Bell, User as UserIcon, LogOut, Shield, Building, 
-  ChevronDown, Search, ExternalLink, CheckCircle2 
+  ChevronDown, Search, ExternalLink, CheckCircle2, Menu 
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { useLanguage } from '../../context/LanguageContext';
 import InstitutionalControlBar from '../common/InstitutionalControlBar';
 
-export default function Header() {
+export default function Header({ onToggleMobile }) {
   const { user, logout, isStudent, isFaculty, isAdmin } = useAuth();
   const { notifications, unreadCount, markNotificationAsRead } = useApp();
+  const { t } = useLanguage();
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const navigate = useNavigate();
@@ -23,7 +24,9 @@ export default function Header() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-semibold text-amber-400">NAAC A++ Grade (CGPA 3.82)</span>
+            <span className="font-semibold text-amber-400" title="University NAAC Institutional Accreditation Grade (Score 3.82 / 4.00, not individual student CGPA)">
+              {t('naacTag')}
+            </span>
             <span className="text-slate-500">&bull;</span>
             <span className="text-slate-300">NIRF Ranked #1 Autonomous University System</span>
             <span className="text-slate-500">&bull;</span>
@@ -46,25 +49,38 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
-          {/* Brand Identity */}
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-inst-sm shrink-0">
-              <GraduationCap className="w-6 h-6 text-amber-400" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-base tracking-tight text-ink-primary font-sans">
-                  EduPulse <span className="text-primary font-bold">Academy</span>
-                </span>
-                <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/25">
-                  ERP
-                </span>
+          <div className="flex items-center gap-3">
+            {user && (
+              <button
+                type="button"
+                onClick={onToggleMobile}
+                className="md:hidden p-2 rounded-xl text-ink-secondary hover:text-primary hover:bg-surface-alt transition border border-surface-border cursor-pointer"
+                aria-label="Toggle navigation menu"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+            )}
+
+            {/* Brand Identity */}
+            <Link to="/" className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-inst-sm shrink-0">
+                <GraduationCap className="w-6 h-6 text-amber-400" />
               </div>
-              <p className="text-[10px] text-ink-muted font-medium hidden sm:block">
-                विद्ययाऽमृतमश्नुते &bull; Student Information &amp; Academic Management System
-              </p>
-            </div>
-          </Link>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold text-base tracking-tight text-ink-primary font-sans">
+                    EduPulse <span className="text-primary font-bold">Academy</span>
+                  </span>
+                  <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/25">
+                    ERP
+                  </span>
+                </div>
+                <p className="text-[10px] text-ink-muted font-medium hidden sm:block">
+                  {t('motto')}
+                </p>
+              </div>
+            </Link>
+          </div>
 
           {/* Right Action Icons & User Dropdown */}
           <div className="flex items-center gap-2 sm:gap-3">

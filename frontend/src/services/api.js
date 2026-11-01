@@ -1,7 +1,16 @@
 import axios from 'axios';
 
+// Normalize base URL to ensure /api prefix is present and not duplicated
+const rawBase = (import.meta.env.VITE_API_BASE_URL || '').trim();
+let baseURL = '/api';
+
+if (rawBase) {
+  const trimmed = rawBase.replace(/\/+$/, '');
+  baseURL = trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -26,27 +35,37 @@ api.interceptors.response.use(
   (error) => {
     if (error.response) {
       const { status, data } = error.response;
-      
-      // Auto-logout on token expiration
+
+      // Auto-logout on 401
       if (status === 401) {
         localStorage.removeItem('edupulse_token');
         localStorage.removeItem('edupulse_user');
-        if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login' && window.location.pathname !== '/') {
           window.location.href = '/login?expired=true';
         }
       }
 
-      const message = 
-        data?.error || 
-        data?.message || 
-        (typeof data === 'string' && data.length < 150 ? data : `Request failed with status code ${status}`);
-      
-      return Promise.reject(new Error(message));
+      let message = data?.message || data?.error;
+      if (!message && typeof data === 'object' && data !== null) {
+        const values = Object.values(data).filter((v) => typeof v === 'string');
+        if (values.length > 0) message = values.join(', ');
+      }
+      if (!message) {
+        message = typeof data === 'string' && data.length < 200 ? data : `Request failed with status ${status}`;
+      }
+
+      const customErr = new Error(message);
+      customErr.status = status;
+      customErr.data = data;
+      return Promise.reject(customErr);
     } else if (error.request) {
-      return Promise.reject(new Error('Network error: Unable to communicate with the academic server.'));
+      return Promise.reject(
+        new Error(`Network error: Unable to communicate with the Gateway at ${baseURL}. Please verify services are running.`)
+      );
     }
     return Promise.reject(error);
   }
 );
 
+export { baseURL };
 export default api;

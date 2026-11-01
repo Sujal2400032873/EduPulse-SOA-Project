@@ -7,6 +7,14 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const normalizeRole = (r) => {
+    if (!r) return 'STUDENT';
+    const clean = r.toUpperCase().replace('ROLE_', '');
+    if (clean === 'ADMIN') return 'ADMIN';
+    if (clean === 'FACULTY') return 'FACULTY';
+    return 'STUDENT';
+  };
+
   useEffect(() => {
     initializeAuth();
   }, []);
@@ -15,65 +23,70 @@ export function AuthProvider({ children }) {
     const token = authService.getToken();
     const storedUser = authService.getCurrentUser();
 
-    if (token && storedUser) {
-      setUser(storedUser);
+    if (token) {
       try {
         const validation = await authService.verifyToken();
         if (validation && validation.valid) {
-          setUser((prev) => ({
-            ...prev,
-            username: validation.username || prev.username,
-            role: validation.role || prev.role,
-            studentId: validation.studentId || prev.studentId,
-          }));
+          const normRole = normalizeRole(validation.role || storedUser?.role);
+          const userData = {
+            ...(storedUser || {}),
+            id: validation.id || storedUser?.id || null,
+            username: validation.username || storedUser?.username || 'User',
+            email: validation.email || storedUser?.email || `${validation.username || 'user'}@edupulse.edu`,
+            role: normRole,
+            studentId: normRole === 'STUDENT' ? (validation.username || storedUser?.username) : null,
+          };
+          setUser(userData);
+          authService.setSession(token, userData);
+        } else {
+          authService.logout();
+          setUser(null);
         }
-      } catch {
-        // keep stored user if offline/transient error
+      } catch (err) {
+        // If server is unreachable or token expired
+        if (err.status === 401) {
+          authService.logout();
+          setUser(null);
+        } else if (storedUser) {
+          setUser(storedUser);
+        }
       }
+    } else {
+      setUser(null);
     }
     setLoading(false);
   };
 
   const login = async (credentials) => {
     const response = await authService.login(credentials);
+    const token = response.token || response.accessToken;
+    const normRole = normalizeRole(response.role);
+
     const userData = {
-      id: response.id,
+      id: response.id || null,
       username: response.username,
-      fullName: response.fullName,
-      email: response.email,
-      role: response.role, // 'STUDENT' | 'FACULTY' | 'ADMIN'
-      campus: response.campus,
-      studentId: response.studentId || (response.role === 'STUDENT' ? response.username : null),
+      email: response.email || `${response.username}@edupulse.edu`,
+      role: normRole,
+      studentId: normRole === 'STUDENT' ? response.username : null,
     };
 
-    localStorage.setItem('edupulse_token', response.token);
-    localStorage.setItem('edupulse_user', JSON.stringify(userData));
+    authService.setSession(token, userData);
     setUser(userData);
     return userData;
   };
 
-  const register = async (userData) => {
-    const response = await authService.register(userData);
-    const userProfile = {
-      id: response.id,
-      username: response.username,
-      fullName: response.fullName,
-      email: response.email,
-      role: response.role,
-      campus: response.campus,
-      studentId: response.studentId || (response.role === 'STUDENT' ? response.username : null),
-    };
-
-    localStorage.setItem('edupulse_token', response.token);
-    localStorage.setItem('edupulse_user', JSON.stringify(userProfile));
-    setUser(userProfile);
-    return userProfile;
+  const register = async (formData) => {
+    const response = await authService.register(formData);
+    // After register, automatically log in with credentials
+    return await login({
+      username: formData.username,
+      password: formData.password
+    });
   };
 
   const logout = () => {
     authService.logout();
     setUser(null);
-    window.location.href = '/login';
   };
 
   const isStudent = user?.role === 'STUDENT';
@@ -105,3 +118,5 @@ export function useAuth() {
   }
   return context;
 }
+
+export default AuthContext;

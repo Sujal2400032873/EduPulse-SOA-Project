@@ -13,8 +13,20 @@ export const authService = {
     return await api.get('/auth/verify');
   },
 
-  getAllUsers: async () => {
-    return await api.get('/auth/users');
+  getCurrentUserFromServer: async () => {
+    return await api.get('/auth/me');
+  },
+
+  getAllUsers: async (params = {}) => {
+    return await api.get('/auth/users', { params });
+  },
+
+  createUserByAdmin: async (userData) => {
+    return await api.post('/auth/users', userData);
+  },
+
+  getHealth: async () => {
+    return await api.get('/auth/health');
   },
 
   logout: () => {
@@ -33,5 +45,12 @@ export const authService = {
 
   getToken: () => {
     return localStorage.getItem('edupulse_token');
+  },
+
+  setSession: (token, user) => {
+    if (token) localStorage.setItem('edupulse_token', token);
+    if (user) localStorage.setItem('edupulse_user', JSON.stringify(user));
   }
 };
+
+export default authService;

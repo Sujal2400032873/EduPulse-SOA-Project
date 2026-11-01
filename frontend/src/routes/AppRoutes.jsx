@@ -8,94 +8,280 @@ import DashboardLayout from '../components/layout/DashboardLayout';
 // Public Pages
 import LandingPage from '../pages/LandingPage';
 import LoginPage from '../pages/auth/LoginPage';
+import UnauthorizedPage from '../pages/UnauthorizedPage';
+import NotFoundPage from '../pages/NotFoundPage';
 
 // Route Guards
 import ProtectedRoute from './ProtectedRoute';
 import RoleRoute from './RoleRoute';
 
-// Student Pages
-import StudentDashboard from '../pages/student/StudentDashboard';
-import StudentProfile from '../pages/student/StudentProfile';
-import AttendancePage from '../pages/student/AttendancePage';
-import ResultsPage from '../pages/student/ResultsPage';
-import AnalyticsPage from '../pages/student/AnalyticsPage';
-import NotificationsPage from '../pages/student/NotificationsPage';
+// Shared / Dynamic Pages
+import DashboardPage from '../pages/DashboardPage';
+import StudentsPage from '../pages/StudentsPage';
+import AttendancePage from '../pages/AttendancePage';
+import ResultsPage from '../pages/ResultsPage';
+import SoapLookupPage from '../pages/SoapLookupPage';
+
+// Admin Pages
+import AdminDashboard from '../pages/admin/AdminDashboard';
+import StudentDirectoryPage from '../pages/admin/StudentDirectoryPage';
+import UsersPage from '../pages/admin/UsersPage';
+import ServiceRegistryPage from '../pages/admin/ServiceRegistryPage';
+import SystemHealthPage from '../pages/admin/SystemHealthPage';
 
 // Faculty Pages
 import FacultyDashboard from '../pages/faculty/FacultyDashboard';
 import AttendanceManagement from '../pages/faculty/AttendanceManagement';
 import MarksManagement from '../pages/faculty/MarksManagement';
 
-// Admin Pages
-import AdminDashboard from '../pages/admin/AdminDashboard';
-import StudentDirectoryPage from '../pages/admin/StudentDirectoryPage';
-import ServiceRegistryPage from '../pages/admin/ServiceRegistryPage';
-import SystemHealthPage from '../pages/admin/SystemHealthPage';
+// Student Pages
+import StudentDashboard from '../pages/student/StudentDashboard';
+import StudentProfile from '../pages/student/StudentProfile';
+import StudentAttendancePage from '../pages/student/AttendancePage';
+import StudentResultsPage from '../pages/student/ResultsPage';
+import AnalyticsPage from '../pages/student/AnalyticsPage';
+import NotificationsPage from '../pages/student/NotificationsPage';
 
 export default function AppRoutes() {
   const { user } = useAuth();
+
+  const getHomeRoute = () => {
+    if (!user) return '/login';
+    if (user.role === 'ADMIN') return '/admin';
+    if (user.role === 'FACULTY') return '/faculty';
+    return '/student';
+  };
 
   return (
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<LandingPage />} />
-      <Route path="/login" element={user ? <Navigate to={user.role === 'ADMIN' ? '/admin' : user.role === 'FACULTY' ? '/faculty' : '/student'} replace /> : <LoginPage />} />
-
-      {/* Protected Student Portal */}
       <Route
-        path="/student"
+        path="/login"
+        element={user ? <Navigate to={getHomeRoute()} replace /> : <LoginPage />}
+      />
+      <Route path="/unauthorized" element={<UnauthorizedPage />} />
+
+      {/* Top-Level Protected Academic Routes inside Unified Institutional Layout */}
+      <Route
         element={
           <ProtectedRoute>
-            <RoleRoute allowedRoles={['STUDENT', 'ADMIN']}>
-              <DashboardLayout />
-            </RoleRoute>
+            <DashboardLayout />
           </ProtectedRoute>
         }
       >
-        <Route index element={<StudentDashboard />} />
-        <Route path="profile" element={<StudentProfile />} />
-        <Route path="attendance" element={<AttendancePage />} />
-        <Route path="results" element={<ResultsPage />} />
-        <Route path="analytics" element={<AnalyticsPage />} />
-        <Route path="notifications" element={<NotificationsPage />} />
-      </Route>
-
-      {/* Protected Faculty Portal */}
-      <Route
-        path="/faculty"
-        element={
-          <ProtectedRoute>
-            <RoleRoute allowedRoles={['FACULTY', 'ADMIN']}>
-              <DashboardLayout />
+        {/* Core Direct Paths specified in Phase 6 */}
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route
+          path="/students"
+          element={
+            <RoleRoute allowedRoles={['ADMIN', 'FACULTY']}>
+              <StudentsPage />
             </RoleRoute>
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<FacultyDashboard />} />
-        <Route path="attendance" element={<AttendanceManagement />} />
-        <Route path="marks" element={<MarksManagement />} />
-        <Route path="students" element={<StudentDirectoryPage />} />
-      </Route>
-
-      {/* Protected Administrator Portal */}
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute>
+          }
+        />
+        <Route
+          path="/students/new"
+          element={
             <RoleRoute allowedRoles={['ADMIN']}>
-              <DashboardLayout />
+              <StudentsPage />
             </RoleRoute>
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<AdminDashboard />} />
-        <Route path="students" element={<StudentDirectoryPage />} />
-        <Route path="services" element={<ServiceRegistryPage />} />
-        <Route path="health" element={<SystemHealthPage />} />
+          }
+        />
+        <Route
+          path="/students/:id"
+          element={
+            <RoleRoute allowedRoles={['ADMIN', 'FACULTY']}>
+              <StudentsPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/students/:id/edit"
+          element={
+            <RoleRoute allowedRoles={['ADMIN']}>
+              <StudentsPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/attendance"
+          element={
+            <RoleRoute allowedRoles={['ADMIN', 'FACULTY']}>
+              <AttendancePage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/results"
+          element={
+            <RoleRoute allowedRoles={['ADMIN', 'FACULTY']}>
+              <ResultsPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/users"
+          element={
+            <RoleRoute allowedRoles={['ADMIN']}>
+              <UsersPage />
+            </RoleRoute>
+          }
+        />
+        <Route path="/soap-lookup" element={<SoapLookupPage />} />
+        <Route
+          path="/services"
+          element={
+            <RoleRoute allowedRoles={['ADMIN']}>
+              <ServiceRegistryPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/health"
+          element={
+            <RoleRoute allowedRoles={['ADMIN']}>
+              <SystemHealthPage />
+            </RoleRoute>
+          }
+        />
+        <Route path="/profile" element={<StudentProfile />} />
+
+        {/* Student Portal Sub-Routes */}
+        <Route path="/student">
+          <Route
+            index
+            element={
+              <RoleRoute allowedRoles={['STUDENT', 'ADMIN']}>
+                <StudentDashboard />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="profile"
+            element={
+              <RoleRoute allowedRoles={['STUDENT', 'ADMIN']}>
+                <StudentProfile />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="attendance"
+            element={
+              <RoleRoute allowedRoles={['STUDENT', 'ADMIN']}>
+                <StudentAttendancePage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="results"
+            element={
+              <RoleRoute allowedRoles={['STUDENT', 'ADMIN']}>
+                <StudentResultsPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="analytics"
+            element={
+              <RoleRoute allowedRoles={['STUDENT', 'ADMIN']}>
+                <AnalyticsPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="notifications"
+            element={
+              <RoleRoute allowedRoles={['STUDENT', 'ADMIN']}>
+                <NotificationsPage />
+              </RoleRoute>
+            }
+          />
+        </Route>
+
+        {/* Faculty Portal Sub-Routes */}
+        <Route path="/faculty">
+          <Route
+            index
+            element={
+              <RoleRoute allowedRoles={['FACULTY', 'ADMIN']}>
+                <FacultyDashboard />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="attendance"
+            element={
+              <RoleRoute allowedRoles={['FACULTY', 'ADMIN']}>
+                <AttendanceManagement />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="marks"
+            element={
+              <RoleRoute allowedRoles={['FACULTY', 'ADMIN']}>
+                <MarksManagement />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="students"
+            element={
+              <RoleRoute allowedRoles={['FACULTY', 'ADMIN']}>
+                <StudentDirectoryPage />
+              </RoleRoute>
+            }
+          />
+        </Route>
+
+        {/* Admin Portal Sub-Routes */}
+        <Route path="/admin">
+          <Route
+            index
+            element={
+              <RoleRoute allowedRoles={['ADMIN']}>
+                <AdminDashboard />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="students"
+            element={
+              <RoleRoute allowedRoles={['ADMIN']}>
+                <StudentDirectoryPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="users"
+            element={
+              <RoleRoute allowedRoles={['ADMIN']}>
+                <UsersPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="services"
+            element={
+              <RoleRoute allowedRoles={['ADMIN']}>
+                <ServiceRegistryPage />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="health"
+            element={
+              <RoleRoute allowedRoles={['ADMIN']}>
+                <SystemHealthPage />
+              </RoleRoute>
+            }
+          />
+        </Route>
       </Route>
 
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* 404 Fallback */}
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

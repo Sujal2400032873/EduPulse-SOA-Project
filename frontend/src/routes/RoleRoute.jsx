@@ -5,12 +5,12 @@ import { useAuth } from '../context/AuthContext';
 export default function RoleRoute({ allowedRoles, children }) {
   const { user } = useAuth();
 
-  if (!user || !allowedRoles.includes(user.role)) {
-    // Redirect to their respective authorized home
-    if (user?.role === 'STUDENT') return <Navigate to="/student" replace />;
-    if (user?.role === 'FACULTY') return <Navigate to="/faculty" replace />;
-    if (user?.role === 'ADMIN') return <Navigate to="/admin" replace />;
+  if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!allowedRoles.includes(user.role)) {
+    return <Navigate to="/unauthorized" replace />;
   }
 
   return children;

@@ -8,31 +8,31 @@
    ========================================================================== */
 
 :root, [data-theme="light"] {
-  /* High-Contrast Royal Navy */
-  --primary-color: #1D4ED8;
-  --primary-hover: #1E40AF;
-  --primary-light: #EFF6FF;
-  --primary-border: #93C5FD;
-  --secondary-color: #2563EB;
+  /* High-Quality Institutional Primary Blue & Secondary Indigo */
+  --primary-color: #3157D5;
+  --primary-hover: #2345B8;
+  --primary-light: #EEF3FD;
+  --primary-border: #BAC9FA;
+  --secondary-color: #6574CD;
 
-  /* Surfaces - Pure Crisp Contrast */
-  --bg-main: #F8FAFC;
+  /* Surfaces - Pristine Light Theme Surfaces */
+  --bg-main: #F5F7FB;
   --bg-surface: #FFFFFF;
   --bg-card: #FFFFFF;
-  --bg-soft: #F1F5F9;
-  --bg-hover: #E2E8F0;
-  --border-color: #CBD5E1;
+  --bg-soft: #EDF2F9;
+  --bg-hover: #E4EBF6;
+  --border-color: #E4E9F2;
 
-  /* Typography - Bold Deep Midnight Slate (Maximum Contrast) */
-  --text-primary: #0F172A;
-  --text-secondary: #334155;
-  --text-muted: #64748B;
-  --text-light: #94A3B8;
+  /* Typography - Curated Deep Slate and Muted Ink */
+  --text-primary: #172033;
+  --text-secondary: #69758A;
+  --text-muted: #8B98AD;
+  --text-light: #BAC4D4;
 
-  /* Status */
-  --status-success: #15803D;
-  --status-warning: #B45309;
-  --status-danger: #B91C1C;
+  /* Status Accents */
+  --status-success: #16865C;
+  --status-warning: #D78B18;
+  --status-danger: #D64545;
 }
 
 /* Medium Mode: Executive Slate Theme (Distinct from Light & Dark) */

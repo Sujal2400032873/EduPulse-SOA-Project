@@ -11,6 +11,12 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
 
     Optional<Student> findByStudentId(String studentId);
 
+    Optional<Student> findByStudentIdIgnoreCase(String studentId);
+
+    Optional<Student> findByEmail(String email);
+
+    Optional<Student> findByEmailIgnoreCase(String email);
+
     boolean existsByStudentId(String studentId);
 
     boolean existsByEmail(String email);

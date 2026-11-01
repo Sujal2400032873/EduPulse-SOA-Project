@@ -11,6 +11,7 @@ import java.util.TreeMap;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.edupulse.result.client.StudentServiceClient;
 import com.edupulse.result.dto.ResultRequest;
 import com.edupulse.result.dto.ResultResponse;
 import com.edupulse.result.dto.SemesterTranscript;
@@ -25,9 +26,16 @@ import com.edupulse.result.repository.ResultRepository;
 public class ResultService {
 
     private final ResultRepository resultRepository;
+    private final StudentServiceClient studentServiceClient;
+    private final com.edupulse.result.event.ResultEventPublisher resultEventPublisher;
 
-    public ResultService(ResultRepository resultRepository) {
+    public ResultService(
+            ResultRepository resultRepository,
+            StudentServiceClient studentServiceClient,
+            com.edupulse.result.event.ResultEventPublisher resultEventPublisher) {
         this.resultRepository = resultRepository;
+        this.studentServiceClient = studentServiceClient;
+        this.resultEventPublisher = resultEventPublisher;
     }
 
     @Transactional
@@ -37,6 +45,9 @@ public class ResultService {
 
         String studentId = request.getStudentId().trim();
         String subjectCode = normalizeCode(request.getSubjectCode());
+
+        // Inter-service verification: confirm student exists in Student Service
+        studentServiceClient.validateStudentExists(studentId);
 
         if (resultRepository.existsByStudentIdAndSubjectCodeAndSemester(
                 studentId,
@@ -56,9 +67,37 @@ public class ResultService {
 
         applyRequest(result, request);
 
-        return ResultResponse.from(
-                resultRepository.save(result)
-        );
+        Result saved = resultRepository.save(result);
+
+        if (resultEventPublisher != null) {
+            resultEventPublisher.publishResultPublished(
+                    com.edupulse.result.event.ResultPublishedEvent.of(
+                            saved.getStudentId(),
+                            saved.getSubjectCode(),
+                            saved.getSubjectName(),
+                            saved.getSemester(),
+                            saved.getMarks(),
+                            saved.getMaxMarks(),
+                            saved.getPercentage(),
+                            saved.getGrade(),
+                            saved.getRecordedBy()
+                    )
+            );
+        }
+
+        return ResultResponse.from(saved);
+    }
+
+    @Transactional
+    public List<ResultResponse> createBatch(
+            List<ResultRequest> requests,
+            String recordedBy) {
+
+        List<ResultResponse> responses = new ArrayList<>();
+        for (ResultRequest req : requests) {
+            responses.add(create(req, recordedBy));
+        }
+        return responses;
     }
 
     @Transactional
@@ -78,6 +117,9 @@ public class ResultService {
 
         String studentId = request.getStudentId().trim();
         String subjectCode = normalizeCode(request.getSubjectCode());
+
+        // Inter-service verification: confirm student exists in Student Service
+        studentServiceClient.validateStudentExists(studentId);
 
         if (resultRepository
                 .existsByStudentIdAndSubjectCodeAndSemesterAndIdNot(
@@ -116,6 +158,37 @@ public class ResultService {
     }
 
     @Transactional(readOnly = true)
+    public ResultResponse getById(Long id) {
+        Result result = resultRepository.findById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Result with id " + id + " not found"
+                        )
+                );
+        return ResultResponse.from(result);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ResultResponse> getAll(
+            Integer semester,
+            String subjectCode) {
+
+        List<Result> results;
+
+        if (semester != null) {
+            results = resultRepository.findBySemesterOrderBySubjectCodeAsc(semester);
+        } else if (subjectCode != null && !subjectCode.isBlank()) {
+            results = resultRepository.findBySubjectCodeIgnoreCase(subjectCode.trim());
+        } else {
+            results = resultRepository.findAll();
+        }
+
+        return results.stream()
+                .map(ResultResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<ResultResponse> getByStudent(
             String studentId,
             Integer semester) {
@@ -126,16 +199,31 @@ public class ResultService {
 
             results = resultRepository
                     .findByStudentIdAndSemesterOrderBySubjectCodeAsc(
-                            studentId,
+                            studentId.trim(),
                             semester
                     );
+
+            if (results == null || results.isEmpty()) {
+                results = resultRepository
+                        .findByStudentIdIgnoreCaseAndSemesterOrderBySubjectCodeAsc(
+                                studentId.trim(),
+                                semester
+                        );
+            }
 
         } else {
 
             results = resultRepository
                     .findByStudentIdOrderBySemesterAscSubjectCodeAsc(
-                            studentId
+                            studentId.trim()
                     );
+
+            if (results == null || results.isEmpty()) {
+                results = resultRepository
+                        .findByStudentIdIgnoreCaseOrderBySemesterAscSubjectCodeAsc(
+                                studentId.trim()
+                        );
+            }
         }
 
         return results.stream()
@@ -149,8 +237,15 @@ public class ResultService {
         List<Result> all =
                 resultRepository
                         .findByStudentIdOrderBySemesterAscSubjectCodeAsc(
-                                studentId
+                                studentId.trim()
                         );
+
+        if (all == null || all.isEmpty()) {
+            all = resultRepository
+                    .findByStudentIdIgnoreCaseOrderBySemesterAscSubjectCodeAsc(
+                            studentId.trim()
+                    );
+        }
 
         Map<Integer, List<Result>> bySemester =
                 new TreeMap<>();
@@ -235,6 +330,20 @@ public class ResultService {
                         overallWeighted,
                         overallCredits
                 )
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getStats() {
+        long totalResults = resultRepository.count();
+        List<Result> all = resultRepository.findAll();
+        long passed = all.stream().filter(r -> !"F".equalsIgnoreCase(r.getGrade())).count();
+        double passRate = totalResults > 0 ? Math.round(passed * 10000.0 / totalResults) / 100.0 : 0.0;
+        return Map.of(
+                "totalResults", totalResults,
+                "passedCount", passed,
+                "failedCount", totalResults - passed,
+                "passRate", passRate
         );
     }
 

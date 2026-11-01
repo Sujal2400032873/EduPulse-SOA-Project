@@ -1,57 +1,103 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, TrendingUp, Award, CalendarCheck2, 
-  CheckCircle2, AlertCircle, BookOpen, Star, ShieldCheck 
+  CheckCircle2, AlertCircle, BookOpen, Star, ShieldCheck, RefreshCw 
 } from 'lucide-react';
 import { 
   ResponsiveContainer, LineChart, Line, BarChart, Bar, 
-  XAxis, YAxis, Tooltip, CartesianGrid, Legend, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar 
+  XAxis, YAxis, Tooltip, CartesianGrid, Legend, PieChart, Pie, Cell 
 } from 'recharts';
 import { useAuth } from '../../context/AuthContext';
+import { resultService } from '../../services/resultService';
+import { attendanceService } from '../../services/attendanceService';
+import { studentService } from '../../services/studentService';
+import { useToast } from '../../context/ToastContext';
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
+  const { addToast } = useToast();
 
-  // Semester Progression: SGPA vs CGPA
-  const progressionData = [
-    { semester: 'Sem I', sgpa: 8.80, cgpa: 8.80, attendance: 96.4 },
-    { semester: 'Sem II', sgpa: 9.00, cgpa: 8.90, attendance: 94.2 },
-    { semester: 'Sem III', sgpa: 9.20, cgpa: 9.00, attendance: 91.8 },
-    { semester: 'Sem IV', sgpa: 9.10, cgpa: 9.03, attendance: 95.0 },
-    { semester: 'Sem V', sgpa: 9.30, cgpa: 9.12, attendance: 93.6 },
-    { semester: 'Sem VI', sgpa: 9.40, cgpa: 9.18, attendance: 89.5 },
-  ];
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
+  const [transcript, setTranscript] = useState(null);
+  const [resultsList, setResultsList] = useState([]);
+  const [attendance, setAttendance] = useState(null);
 
-  // Subject Domain Competency Radar
-  const radarData = [
-    { subject: 'Algorithms', score: 94, fullMark: 100 },
-    { subject: 'Databases', score: 92, fullMark: 100 },
-    { subject: 'Cloud & Microservices', score: 96, fullMark: 100 },
-    { subject: 'Operating Systems', score: 88, fullMark: 100 },
-    { subject: 'Networks', score: 90, fullMark: 100 },
-    { subject: 'Practical Labs', score: 96, fullMark: 100 },
-  ];
+  useEffect(() => {
+    loadAnalytics();
+  }, []);
 
-  // Grade Distribution
-  const gradeData = [
-    { name: 'Grade O (10 pts)', count: 4, fill: '#0B3C8C' },
-    { name: 'Grade A+ (9 pts)', count: 2, fill: '#1456A0' },
-    { name: 'Grade A (8 pts)', count: 0, fill: '#2563EB' },
-  ];
+  const loadAnalytics = async () => {
+    setLoading(true);
+    try {
+      const [profRes, transRes, resList, attRes] = await Promise.allSettled([
+        studentService.getMyProfile(),
+        resultService.getMyTranscript(),
+        resultService.getMyResults(),
+        attendanceService.getMyPercentage(),
+      ]);
 
-  // Credit Progression
-  const creditData = [
-    { semester: 'Sem I', credits: 22 },
-    { semester: 'Sem II', credits: 22 },
-    { semester: 'Sem III', credits: 20 },
-    { semester: 'Sem IV', credits: 20 },
-    { semester: 'Sem V', credits: 20 },
-    { semester: 'Sem VI', credits: 20 },
-  ];
+      if (profRes.status === 'fulfilled' && profRes.value) {
+        setProfile(profRes.value);
+      }
+      if (transRes.status === 'fulfilled' && transRes.value) {
+        setTranscript(transRes.value);
+      }
+      if (resList.status === 'fulfilled' && Array.isArray(resList.value)) {
+        setResultsList(resList.value);
+      }
+      if (attRes.status === 'fulfilled' && attRes.value) {
+        setAttendance(attRes.value);
+      }
+    } catch (err) {
+      addToast('Error loading live performance analytics', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 1. Dynamic Semester Progression computed from real transcript
+  const progressionData = (transcript?.semesters || []).map((sem) => ({
+    semester: `Sem ${sem.semester}`,
+    sgpa: Number(sem.sgpa) || 0,
+    cgpa: Number(transcript.cgpa) || Number(sem.sgpa) || 0,
+    credits: sem.earnedCredits || sem.totalCredits || 0,
+  }));
+
+  // 2. Dynamic Grade Distribution computed from real results
+  const gradeCounts = {};
+  resultsList.forEach((r) => {
+    const g = r.grade || 'N/A';
+    gradeCounts[g] = (gradeCounts[g] || 0) + 1;
+  });
+
+  const gradeColors = {
+    'O': '#0B3C8C',
+    'A+': '#1456A0',
+    'A': '#2563EB',
+    'B+': '#3B82F6',
+    'B': '#60A5FA',
+    'C': '#93C5FD',
+    'F': '#EF4444',
+  };
+
+  const gradeData = Object.keys(gradeCounts).map((grade) => ({
+    name: `Grade ${grade}`,
+    count: gradeCounts[grade],
+    fill: gradeColors[grade] || '#0B3C8C',
+  }));
+
+  // 3. Dynamic Subject Performance list
+  const sortedSubjects = [...resultsList].sort((a, b) => (Number(b.marks) || 0) - (Number(a.marks) || 0));
+  const topSubjects = sortedSubjects.slice(0, 3);
+  const lowestSubjects = sortedSubjects.length > 3 ? sortedSubjects.slice(-2).reverse() : [];
+
+  const overallAttendance = attendance?.percentage !== undefined ? Number(attendance.percentage).toFixed(1) : '—';
+  const overallCgpa = transcript?.cgpa ? Number(transcript.cgpa).toFixed(2) : '—';
+  const totalCredits = transcript?.earnedCredits || 0;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
-      
       {/* Page Header */}
       <div className="inst-card p-5 sm:p-6 border-l-4 border-l-primary flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -59,185 +105,159 @@ export default function AnalyticsPage() {
             <h1 className="text-xl font-bold text-ink-primary">
               Academic &amp; Performance Analytics
             </h1>
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-primary/15 text-primary border border-primary/25">
-              Continuous Evaluation Metric
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-primary-50 text-primary border border-primary-200">
+              Live Evaluation Metrics &bull; PostgreSQL
             </span>
           </div>
           <p className="text-xs text-ink-muted mt-1">
-            Predictive performance modeling &bull; Longitudinal CGPA Trajectory &bull; Subject Mastery
+            Student: <strong className="text-ink-primary">{profile?.name || user?.username}</strong> ({profile?.studentId || user?.username}) &bull; Dept: {profile?.department || 'Engineering'}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>Honors Program Eligible</span>
-          </span>
+          <button
+            onClick={loadAnalytics}
+            disabled={loading}
+            className="px-3.5 py-1.5 rounded-xl bg-primary hover:bg-primary-dark text-white text-xs font-bold transition flex items-center gap-1.5 shadow-inst-sm cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refresh Analytics</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Metric Cards Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="inst-card p-4 space-y-1 border-l-2 border-l-primary">
+          <div className="text-xs font-semibold text-ink-muted">Cumulative CGPA</div>
+          <div className="text-2xl font-black text-ink-primary">{overallCgpa}</div>
+          <div className="text-[11px] text-emerald-700 font-medium">10-Point Grading Scale</div>
+        </div>
+
+        <div className="inst-card p-4 space-y-1 border-l-2 border-l-emerald-600">
+          <div className="text-xs font-semibold text-ink-muted">Attendance Standing</div>
+          <div className="text-2xl font-black text-ink-primary">{overallAttendance}%</div>
+          <div className="text-[11px] text-ink-muted">
+            {Number(overallAttendance) >= 75 ? 'Statutory Minimum Met' : 'Shortage Warning (<75%)'}
+          </div>
+        </div>
+
+        <div className="inst-card p-4 space-y-1 border-l-2 border-l-indigo-600">
+          <div className="text-xs font-semibold text-ink-muted">Credits Earned</div>
+          <div className="text-2xl font-black text-ink-primary">{totalCredits}</div>
+          <div className="text-[11px] text-ink-muted">Validated by Examination Cell</div>
+        </div>
+
+        <div className="inst-card p-4 space-y-1 border-l-2 border-l-amber-600">
+          <div className="text-xs font-semibold text-ink-muted">Graded Courses</div>
+          <div className="text-2xl font-black text-ink-primary">{resultsList.length}</div>
+          <div className="text-[11px] text-ink-muted">Across all completed terms</div>
         </div>
       </div>
 
       {/* Summary Insights Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        
         {/* Strong Subjects Card */}
-        <div className="inst-card p-4 border-l-4 border-l-status-success space-y-2">
+        <div className="inst-card p-5 border-l-4 border-l-emerald-600 space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-status-success uppercase tracking-wider flex items-center gap-1.5">
+            <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1.5">
               <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
               Primary Academic Strengths
             </span>
-            <span className="text-[10px] text-ink-muted">Grade O (Score &gt;90%)</span>
+            <span className="text-[10px] text-ink-muted font-mono">Highest Marks</span>
           </div>
-          <p className="text-xs text-ink-secondary leading-relaxed">
-            Consistently exceptional performance observed in <strong>Cloud &amp; Microservices Architecture (96%)</strong> and <strong>Design &amp; Analysis of Algorithms (94%)</strong>. High aptitude for distributed systems and asynchronous event-driven design.
-          </p>
+          {topSubjects.length > 0 ? (
+            <div className="space-y-1.5 pt-1">
+              {topSubjects.map((s) => (
+                <div key={s.id} className="flex justify-between items-center text-xs">
+                  <span className="text-ink-secondary truncate max-w-[220px]">
+                    <strong>{s.subjectCode}</strong>: {s.subjectName}
+                  </span>
+                  <span className="font-bold text-primary">{s.marks}% (Grade {s.grade})</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-ink-muted">No graded course records registered yet.</p>
+          )}
         </div>
 
-        {/* Subjects Requiring Attention */}
-        <div className="inst-card p-4 border-l-4 border-l-primary space-y-2">
+        {/* Subjects for Review */}
+        <div className="inst-card p-5 border-l-4 border-l-primary space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
               <TrendingUp className="w-4 h-4 text-primary" />
-              Focus &amp; Growth Recommendations
+              Course Performance Trajectory
             </span>
-            <span className="text-[10px] text-ink-muted">Grade A+ (Score 80-89%)</span>
+            <span className="text-[10px] text-ink-muted font-mono">Curricular Records</span>
           </div>
-          <p className="text-xs text-ink-secondary leading-relaxed">
-            While <strong>Operating Systems (88%)</strong> is securely in First Class with Distinction, scoring in low-level kernel concurrency assignments can be elevated through practical scheduler simulations to reach Grade O.
+          <p className="text-xs text-ink-secondary leading-relaxed pt-1">
+            Academic standing is actively monitored across semesters. Maintaining regular attendance in laboratory and theory modules directly reinforces SGPA trajectory towards degree completion with honors.
           </p>
         </div>
-
       </div>
 
-      {/* Main Charts Grid */}
+      {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Chart 1: Longitudinal SGPA vs CGPA Trajectory */}
+        {/* SGPA Progression Chart */}
         <div className="inst-card p-5">
-          <div className="flex items-center justify-between pb-3 mb-4 border-b border-surface-border">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-sm font-bold text-ink-primary">
-                Multi-Semester SGPA vs CGPA Growth
-              </h2>
-              <p className="text-xs text-ink-muted">Evolution from Semester I through VI</p>
+              <h3 className="text-sm font-bold text-ink-primary">Semester-wise SGPA Progression</h3>
+              <p className="text-xs text-ink-muted">Grade point trajectory across registered terms</p>
             </div>
-            <span className="text-xs font-mono font-bold text-primary">CGPA: 9.18</span>
+            <Award className="w-4 h-4 text-primary" />
           </div>
 
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={progressionData} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
-                <XAxis dataKey="semester" stroke="#64748B" fontSize={11} />
-                <YAxis domain={[8.0, 10.0]} stroke="#64748B" fontSize={11} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '12px' }} 
-                />
-                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                <Line type="monotone" dataKey="sgpa" name="Semester SGPA" stroke="#2563EB" strokeWidth={2.5} activeDot={{ r: 6 }} />
-                <Line type="monotone" dataKey="cgpa" name="Cumulative CGPA" stroke="#0B3C8C" strokeWidth={2.5} strokeDasharray="4 4" />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          {progressionData.length > 0 ? (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={progressionData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                  <XAxis dataKey="semester" tick={{ fontSize: 11 }} />
+                  <YAxis domain={[0, 10]} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="sgpa" stroke="#0B3C8C" strokeWidth={2.5} name="SGPA" activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-xs text-ink-muted">
+              No semester examination records recorded yet.
+            </div>
+          )}
         </div>
 
-        {/* Chart 2: Attendance vs Academic Performance Correlation */}
+        {/* Grade Distribution Chart */}
         <div className="inst-card p-5">
-          <div className="flex items-center justify-between pb-3 mb-4 border-b border-surface-border">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-sm font-bold text-ink-primary">
-                Classroom Attendance Correlation (%)
-              </h2>
-              <p className="text-xs text-ink-muted">Attendance percentage logged across academic semesters</p>
+              <h3 className="text-sm font-bold text-ink-primary">Grade Distribution Breakdown</h3>
+              <p className="text-xs text-ink-muted">Letter grades earned across all subjects</p>
             </div>
-            <span className="text-xs font-semibold text-emerald-700">All &gt;75%</span>
+            <BarChart3 className="w-4 h-4 text-emerald-600" />
           </div>
 
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={progressionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
-                <XAxis dataKey="semester" stroke="#64748B" fontSize={11} />
-                <YAxis domain={[60, 100]} stroke="#64748B" fontSize={11} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '12px' }} 
-                />
-                <Bar dataKey="attendance" name="Attendance %" fill="#1456A0" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {gradeData.length > 0 ? (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={gradeData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#0B3C8C" radius={[4, 4, 0, 0]} name="Subjects" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-xs text-ink-muted">
+              No grade distribution data available yet.
+            </div>
+          )}
         </div>
-
-        {/* Chart 3: Subject Mastery Radar */}
-        <div className="inst-card p-5">
-          <div className="flex items-center justify-between pb-3 mb-4 border-b border-surface-border">
-            <div>
-              <h2 className="text-sm font-bold text-ink-primary">
-                Curricular Competency Radar
-              </h2>
-              <p className="text-xs text-ink-muted">Subject-wise percentage score distribution</p>
-            </div>
-            <span className="text-xs font-semibold text-primary">Mean: 92.7%</span>
-          </div>
-
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart data={radarData} outerRadius="75%">
-                <PolarGrid stroke="#E2E8F0" />
-                <PolarAngleAxis dataKey="subject" stroke="#334155" fontSize={11} />
-                <PolarRadiusAxis domain={[0, 100]} stroke="#94A3B8" fontSize={9} />
-                <Radar name="Performance Index" dataKey="score" stroke="#0B3C8C" fill="#2563EB" fillOpacity={0.4} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#FFFFFF', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '12px' }} 
-                />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Chart 4: Cumulative Degree Credit Completion */}
-        <div className="inst-card p-5">
-          <div className="flex items-center justify-between pb-3 mb-4 border-b border-surface-border">
-            <div>
-              <h2 className="text-sm font-bold text-ink-primary">
-                Degree Credit Completion
-              </h2>
-              <p className="text-xs text-ink-muted">124 Credits completed out of 160 required for B.Tech Degree</p>
-            </div>
-            <span className="text-xs font-bold text-emerald-700">77.5% Complete</span>
-          </div>
-
-          <div className="h-64 w-full flex flex-col justify-center">
-            <div className="space-y-4 px-4">
-              <div>
-                <div className="flex justify-between text-xs font-bold mb-1">
-                  <span>Completed: 124 Credits</span>
-                  <span>Required: 160 Credits</span>
-                </div>
-                <div className="w-full h-4 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full" style={{ width: '77.5%' }} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-surface-border text-xs">
-                <div className="p-3 rounded-lg bg-surface-soft border border-surface-border">
-                  <div className="text-ink-muted">Remaining Semesters</div>
-                  <div className="text-lg font-bold text-ink-primary mt-0.5">2 Semesters</div>
-                  <div className="text-[10px] text-ink-muted mt-0.5">Sem VII &amp; Sem VIII (Capstone)</div>
-                </div>
-
-                <div className="p-3 rounded-lg bg-surface-soft border border-surface-border">
-                  <div className="text-ink-muted">Credits Remaining</div>
-                  <div className="text-lg font-bold text-primary mt-0.5">36 Credits</div>
-                  <div className="text-[10px] text-ink-muted mt-0.5">Major Project (12) + 6 Electives</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
       </div>
-
     </div>
   );
 }

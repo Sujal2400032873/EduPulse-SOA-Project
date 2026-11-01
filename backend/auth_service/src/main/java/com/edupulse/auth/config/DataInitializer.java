@@ -1,5 +1,7 @@
 package com.edupulse.auth.config;
 
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,9 +25,9 @@ public class DataInitializer implements CommandLineRunner {
     private final String adminPassword;
 
     public DataInitializer(UserRepository userRepository, PasswordEncoder passwordEncoder,
-            @Value("${app.admin.username}") String adminUsername,
-            @Value("${app.admin.email}") String adminEmail,
-            @Value("${app.admin.password}") String adminPassword) {
+            @Value("${app.admin.username:admin}") String adminUsername,
+            @Value("${app.admin.email:admin@gmail.com}") String adminEmail,
+            @Value("${app.admin.password:Admin123}") String adminPassword) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.adminUsername = adminUsername;
@@ -33,15 +35,39 @@ public class DataInitializer implements CommandLineRunner {
         this.adminPassword = adminPassword;
     }
 
+    private record SeedUser(String username, String email, String password, Role role) {}
+
     @Override
     public void run(String... args) {
-        if (!userRepository.existsByUsername(adminUsername)) {
-            User admin = new User(adminUsername, adminEmail, passwordEncoder.encode(adminPassword),
-                    Role.ROLE_ADMIN);
-            userRepository.save(admin);
-            log.info("Seeded default admin user '{}'", adminUsername);
-        } else {
-            log.info("Admin user '{}' already exists, skipping seed", adminUsername);
+        List<SeedUser> defaultUsers = List.of(
+                new SeedUser(adminUsername, adminEmail, adminPassword, Role.ROLE_ADMIN),
+                new SeedUser("faculty1", "faculty1@edupulse.edu", "Password@123", Role.ROLE_FACULTY),
+                new SeedUser("prof_mehta", "prof.mehta@edupulse.edu", "Password@123", Role.ROLE_FACULTY),
+                new SeedUser("STU1001", "aarav.sharma@edupulse.edu", "Student@123", Role.ROLE_STUDENT),
+                new SeedUser("2400032152", "aditya.kumar@edupulse.edu", "Student@123", Role.ROLE_STUDENT),
+                new SeedUser("STU2026", "priya.patel@edupulse.edu", "Student@123", Role.ROLE_STUDENT),
+                new SeedUser("STU1002", "rohan.varma@edupulse.edu", "Student@123", Role.ROLE_STUDENT),
+                new SeedUser("STU1003", "ananya.iyer@edupulse.edu", "Student@123", Role.ROLE_STUDENT),
+                new SeedUser("STU1004", "siddharth.rao@edupulse.edu", "Student@123", Role.ROLE_STUDENT),
+                new SeedUser("STU1005", "neha.gupta@edupulse.edu", "Student@123", Role.ROLE_STUDENT),
+                new SeedUser("STU1006", "vikram.malhotra@edupulse.edu", "Student@123", Role.ROLE_STUDENT)
+        );
+
+        for (SeedUser seed : defaultUsers) {
+            userRepository.findByUsernameIgnoreCase(seed.username()).ifPresentOrElse(
+                    user -> {
+                        user.setEmail(seed.email());
+                        user.setPassword(passwordEncoder.encode(seed.password()));
+                        user.setRole(seed.role());
+                        userRepository.save(user);
+                        log.info("Synchronized user '{}' with role {}", seed.username(), seed.role());
+                    },
+                    () -> {
+                        User user = new User(seed.username(), seed.email(), passwordEncoder.encode(seed.password()), seed.role());
+                        userRepository.save(user);
+                        log.info("Seeded default user '{}' with role {}", seed.username(), seed.role());
+                    }
+            );
         }
     }
 }

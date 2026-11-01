@@ -1,6 +1,7 @@
 package com.edupulse.result.security;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Date;
 
 import javax.crypto.SecretKey;
 
@@ -15,8 +16,12 @@ import io.jsonwebtoken.security.Keys;
 public class JwtService {
 
     private final SecretKey key;
+    private final long expirationMs;
 
-    public JwtService(@Value("${app.jwt.secret}") String secret) {
+    public JwtService(
+            @Value("${app.jwt.secret}") String secret,
+            @Value("${app.jwt.expiration-ms:86400000}") long expirationMs) {
+
         byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
 
         if (secretBytes.length < 32) {
@@ -25,6 +30,22 @@ public class JwtService {
         }
 
         this.key = Keys.hmacShaKeyFor(secretBytes);
+        this.expirationMs = expirationMs;
+    }
+
+    public String generateToken(String username, String role) {
+        return generateToken(username, role, this.expirationMs);
+    }
+
+    public String generateToken(String username, String role, long ttlMs) {
+        Date now = new Date();
+        return Jwts.builder()
+                .subject(username)
+                .claim("role", role)
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + ttlMs))
+                .signWith(key, Jwts.SIG.HS256)
+                .compact();
     }
 
     public Claims parseToken(String token) {
@@ -33,5 +54,9 @@ public class JwtService {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    public long getExpirationMs() {
+        return expirationMs;
     }
 }

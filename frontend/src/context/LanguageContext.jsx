@@ -13,7 +13,7 @@ export const SUPPORTED_LANGUAGES = [
 const TRANSLATIONS = {
   en: {
     portalName: 'EduPulse Academy Information Systems',
-    motto: 'विद्ययाऽमृतमश्नुते • Student Information & Academic Performance Management Platform',
+    motto: 'Student Information & Academic Management System',
     signIn: 'Sign In to Portal',
     signOut: 'Sign Out of Portal',
     dashboard: 'Academic Dashboard',
@@ -24,7 +24,7 @@ const TRANSLATIONS = {
     circulars: 'Circulars & Notices',
     facultyConsole: 'Faculty Console',
     adminConsole: 'Central Administration',
-    naacTag: 'NAAC A++ Grade (CGPA 3.82)',
+    naacTag: 'NAAC A++ Institutional Grade (3.82 / 4.0)',
     nirfTag: 'NIRF Ranked #1 Autonomous University Systems',
     digiLocker: 'DigiLocker & NAD Verified',
     ssoTitle: 'Institutional Single Sign-On',

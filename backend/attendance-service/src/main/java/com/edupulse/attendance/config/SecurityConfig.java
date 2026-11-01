@@ -1,5 +1,7 @@
 package com.edupulse.attendance.config;
 
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -8,6 +10,9 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.edupulse.attendance.security.JwtAuthenticationFilter;
 import com.edupulse.attendance.security.JwtService;
@@ -27,56 +32,75 @@ public class SecurityConfig {
             throws Exception {
 
         http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
-
                 .httpBasic(basic -> basic.disable())
-
                 .formLogin(form -> form.disable())
-
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS))
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(
+                                "/error",
+                                "/api/attendance/health",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
+                        ).permitAll()
 
-                .exceptionHandling(ex ->
-                        ex
-                                .authenticationEntryPoint(
-                                        authenticationEntryPoint)
-                                .accessDeniedHandler(
-                                        accessDeniedHandler))
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/attendance/me",
+                                "/api/attendance/me/**")
+                        .hasRole("STUDENT")
 
-                .authorizeHttpRequests(auth ->
-                        auth
-                                .requestMatchers("/error")
-                                .permitAll()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/attendance",
+                                "/api/attendance/**")
+                        .hasAnyRole("ADMIN", "FACULTY")
 
-                                .requestMatchers(
-                                        HttpMethod.GET,
-                                        "/api/attendance/me",
-                                        "/api/attendance/me/percentage")
-                                .hasRole("STUDENT")
+                        .requestMatchers(
+                                HttpMethod.PUT,
+                                "/api/attendance/**")
+                        .hasAnyRole("ADMIN", "FACULTY")
 
-                                .requestMatchers(
-                                        HttpMethod.POST,
-                                        "/api/attendance")
-                                .hasAnyRole("ADMIN", "FACULTY")
+                        .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/attendance/**")
+                        .hasAnyRole("ADMIN", "FACULTY")
 
-                                .requestMatchers(
-                                        HttpMethod.PUT,
-                                        "/api/attendance/**")
-                                .hasAnyRole("ADMIN", "FACULTY")
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/attendance",
+                                "/api/attendance/**")
+                        .hasAnyRole("ADMIN", "FACULTY")
 
-                                .requestMatchers(
-                                        HttpMethod.GET,
-                                        "/api/attendance/student/**")
-                                .hasAnyRole("ADMIN", "FACULTY")
-
-                                .anyRequest()
-                                .denyAll())
+                        .anyRequest().authenticated())
 
                 .addFilterBefore(
                         new JwtAuthenticationFilter(jwtService),
                         UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowCredentials(true);
+        config.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        config.setExposedHeaders(List.of("Authorization", "Content-Disposition", "X-Instance-Port", "X-Instance-Id"));
+        config.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 }

@@ -26,16 +26,27 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     List<Attendance> findByStudentIdOrderByDateDescSubjectAsc(
             String studentId);
 
+    List<Attendance> findByStudentIdIgnoreCaseOrderByDateDescSubjectAsc(
+            String studentId);
+
     List<Attendance> findByStudentIdAndSubjectOrderByDateDesc(
             String studentId,
             String subject);
+
+    List<Attendance> findByStudentIdIgnoreCaseAndSubjectOrderByDateDesc(
+            String studentId,
+            String subject);
+
+    List<Attendance> findByDateOrderBySubjectAsc(LocalDate date);
+
+    List<Attendance> findByStudentIdAndDateOrderBySubjectAsc(String studentId, LocalDate date);
 
     @Query("""
             select a.subject as subject,
                    count(a) as total,
                    sum(case when a.status = :presentStatus then 1 else 0 end) as present
             from Attendance a
-            where a.studentId = :studentId
+            where upper(a.studentId) = upper(:studentId)
             group by a.subject
             order by a.subject
             """)

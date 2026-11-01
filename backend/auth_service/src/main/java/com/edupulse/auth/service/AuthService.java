@@ -50,37 +50,65 @@ public class AuthService {
     }
 
     private UserResponse createUser(String username, String email, String rawPassword, Role role) {
-        if (userRepository.existsByUsername(username)) {
-            throw new DuplicateResourceException("Username '" + username + "' is already taken");
+        String cleanUsername = username != null ? username.trim() : "";
+        String cleanEmail = email != null ? email.trim().toLowerCase() : "";
+
+        if (userRepository.existsByUsernameIgnoreCase(cleanUsername)) {
+            throw new DuplicateResourceException("Username '" + cleanUsername + "' is already taken");
         }
-        if (userRepository.existsByEmail(email)) {
-            throw new DuplicateResourceException("Email '" + email + "' is already registered");
+        if (userRepository.existsByEmailIgnoreCase(cleanEmail)) {
+            throw new DuplicateResourceException("Email '" + cleanEmail + "' is already registered");
         }
-        User user = new User(username, email, passwordEncoder.encode(rawPassword), role);
+        User user = new User(cleanUsername, cleanEmail, passwordEncoder.encode(rawPassword), role);
         return UserResponse.from(userRepository.save(user));
     }
 
     public AuthResponse login(LoginRequest request) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.username(), request.password()));
+        String identifier = request.username() != null ? request.username().trim() : "";
 
-        User user = userRepository.findByUsername(authentication.getName())
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(identifier, request.password()));
+
+        User user = userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(authentication.getName(), authentication.getName())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         String token = jwtService.generateToken(user);
-        return new AuthResponse(token, "Bearer", jwtService.getExpirationMs(), user.getUsername(),
-                user.getRole().name());
+        return new AuthResponse(
+                user.getId(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getRole().name(),
+                token,
+                "Bearer",
+                jwtService.getExpirationMs()
+        );
     }
 
     @Transactional(readOnly = true)
     public UserResponse getCurrentUser(String username) {
-        User user = userRepository.findByUsername(username)
+        String identifier = username != null ? username.trim() : "";
+        User user = userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(identifier, identifier)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return UserResponse.from(user);
     }
 
     @Transactional(readOnly = true)
     public List<UserResponse> getAllUsers() {
-        return userRepository.findAll().stream().map(UserResponse::from).toList();
+        return getAllUsers(null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserResponse> getAllUsers(String role, String search) {
+        return userRepository.findAll().stream()
+                .filter(u -> {
+                    if (role == null || role.isBlank()) return true;
+                    String r = role.trim();
+                    return u.getRole().name().equalsIgnoreCase(r)
+                            || u.getRole().name().equalsIgnoreCase("ROLE_" + r)
+                            || u.getRole().name().replace("ROLE_", "").equalsIgnoreCase(r.replace("ROLE_", ""));
+                })
+                .filter(u -> search == null || search.isBlank() || u.getUsername().toLowerCase().contains(search.toLowerCase()) || u.getEmail().toLowerCase().contains(search.toLowerCase()))
+                .map(UserResponse::from)
+                .toList();
     }
 }

@@ -35,8 +35,6 @@ public class RequestLoggingFilter implements GlobalFilter, Ordered {
 
         return chain.filter(exchange).then(Mono.fromRunnable(() -> {
 
-            // After routing, this contains the actual
-            // service instance selected by the load balancer
             URI target =
                     exchange.getAttribute(
                             ServerWebExchangeUtils.GATEWAY_REQUEST_URL_ATTR);

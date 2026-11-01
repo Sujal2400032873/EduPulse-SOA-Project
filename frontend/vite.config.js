@@ -10,9 +10,16 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
-        headers: {
-          Connection: 'keep-alive',
-        },
+      },
+      '/ws': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/eureka': {
+        target: 'http://localhost:8761',
+        changeOrigin: true,
+        secure: false,
       }
     }
   }

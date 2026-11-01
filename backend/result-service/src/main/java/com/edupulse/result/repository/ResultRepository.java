@@ -25,8 +25,21 @@ public interface ResultRepository extends JpaRepository<Result, Long> {
             String studentId
     );
 
+    List<Result> findByStudentIdIgnoreCaseOrderBySemesterAscSubjectCodeAsc(
+            String studentId
+    );
+
     List<Result> findByStudentIdAndSemesterOrderBySubjectCodeAsc(
             String studentId,
             Integer semester
     );
+
+    List<Result> findByStudentIdIgnoreCaseAndSemesterOrderBySubjectCodeAsc(
+            String studentId,
+            Integer semester
+    );
+
+    List<Result> findBySemesterOrderBySubjectCodeAsc(Integer semester);
+
+    List<Result> findBySubjectCodeIgnoreCase(String subjectCode);
 }

@@ -1,12 +1,15 @@
 package com.edupulse.attendance.service;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.edupulse.attendance.client.StudentServiceClient;
 import com.edupulse.attendance.dto.AttendancePercentageResponse;
 import com.edupulse.attendance.dto.AttendanceRequest;
 import com.edupulse.attendance.dto.AttendanceResponse;
@@ -22,9 +25,16 @@ import com.edupulse.attendance.repository.SubjectSummary;
 public class AttendanceService {
 
     private final AttendanceRepository attendanceRepository;
+    private final StudentServiceClient studentServiceClient;
+    private final com.edupulse.attendance.event.AttendanceEventPublisher attendanceEventPublisher;
 
-    public AttendanceService(AttendanceRepository attendanceRepository) {
+    public AttendanceService(
+            AttendanceRepository attendanceRepository,
+            StudentServiceClient studentServiceClient,
+            com.edupulse.attendance.event.AttendanceEventPublisher attendanceEventPublisher) {
         this.attendanceRepository = attendanceRepository;
+        this.studentServiceClient = studentServiceClient;
+        this.attendanceEventPublisher = attendanceEventPublisher;
     }
 
     @Transactional
@@ -34,6 +44,9 @@ public class AttendanceService {
 
         String studentId = request.studentId().trim();
         String subject = normalizeSubject(request.subject());
+
+        // Inter-service verification: confirm student exists in Student Service
+        studentServiceClient.validateStudentExists(studentId);
 
         if (attendanceRepository
                 .existsByStudentIdAndSubjectAndDate(
@@ -59,8 +72,33 @@ public class AttendanceService {
         attendance.setStatus(request.status());
         attendance.setMarkedBy(markedBy);
 
-        return AttendanceResponse.from(
-                attendanceRepository.save(attendance));
+        Attendance saved = attendanceRepository.save(attendance);
+
+        if (attendanceEventPublisher != null) {
+            attendanceEventPublisher.publishAttendanceRecorded(
+                    com.edupulse.attendance.event.AttendanceRecordedEvent.of(
+                            saved.getStudentId(),
+                            saved.getSubject(),
+                            saved.getDate(),
+                            saved.getStatus().name(),
+                            saved.getMarkedBy()
+                    )
+            );
+        }
+
+        return AttendanceResponse.from(saved);
+    }
+
+    @Transactional
+    public List<AttendanceResponse> markBatch(
+            List<AttendanceRequest> requests,
+            String markedBy) {
+
+        List<AttendanceResponse> results = new ArrayList<>();
+        for (AttendanceRequest request : requests) {
+            results.add(mark(request, markedBy));
+        }
+        return results;
     }
 
     @Transactional
@@ -79,6 +117,9 @@ public class AttendanceService {
 
         String studentId = request.studentId().trim();
         String subject = normalizeSubject(request.subject());
+
+        // Inter-service verification: confirm student exists in Student Service
+        studentServiceClient.validateStudentExists(studentId);
 
         if (attendanceRepository
                 .existsByStudentIdAndSubjectAndDateAndIdNot(
@@ -108,6 +149,41 @@ public class AttendanceService {
     }
 
     @Transactional(readOnly = true)
+    public AttendanceResponse getById(Long id) {
+        Attendance attendance = attendanceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Attendance record with id " + id + " not found"));
+        return AttendanceResponse.from(attendance);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        Attendance attendance = attendanceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Attendance record with id " + id + " not found"));
+        attendanceRepository.delete(attendance);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AttendanceResponse> getAll(
+            String studentId,
+            String subject,
+            LocalDate date) {
+
+        List<Attendance> records;
+
+        if (studentId != null && !studentId.isBlank()) {
+            return getByStudent(studentId, subject);
+        } else if (date != null) {
+            records = attendanceRepository.findByDateOrderBySubjectAsc(date);
+        } else {
+            records = attendanceRepository.findAll();
+        }
+
+        return records.stream()
+                .map(AttendanceResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<AttendanceResponse> getByStudent(
             String studentId,
             String subject) {
@@ -118,19 +194,27 @@ public class AttendanceService {
 
             records =
                     attendanceRepository
-                            .findByStudentIdAndSubjectOrderByDateDesc(
-                                    studentId,
+                            .findByStudentIdIgnoreCaseAndSubjectOrderByDateDesc(
+                                    studentId.trim(),
                                     normalizeSubject(subject));
 
         } else {
 
             records =
                     attendanceRepository
-                            .findByStudentIdOrderByDateDescSubjectAsc(
-                                    studentId);
+                            .findByStudentIdIgnoreCaseOrderByDateDescSubjectAsc(
+                                    studentId.trim());
         }
 
         return records.stream()
+                .map(AttendanceResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AttendanceResponse> getByDate(LocalDate date) {
+        return attendanceRepository.findByDateOrderBySubjectAsc(date)
+                .stream()
                 .map(AttendanceResponse::from)
                 .toList();
     }
@@ -141,7 +225,7 @@ public class AttendanceService {
 
         List<SubjectSummary> rows =
                 attendanceRepository.summarizeBySubject(
-                        studentId,
+                        studentId.trim(),
                         AttendanceStatus.PRESENT);
 
         long totalAll = 0;
@@ -181,6 +265,21 @@ public class AttendanceService {
                 totalAll - presentAll,
                 percentage(presentAll, totalAll),
                 subjectWise);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getStats() {
+        long totalRecords = attendanceRepository.count();
+        List<Attendance> all = attendanceRepository.findAll();
+        long presentCount = all.stream().filter(a -> a.getStatus() == AttendanceStatus.PRESENT).count();
+        double overallPercentage = totalRecords > 0 ? percentage(presentCount, totalRecords) : 0.0;
+
+        return Map.of(
+                "totalRecords", totalRecords,
+                "presentCount", presentCount,
+                "absentCount", totalRecords - presentCount,
+                "overallPercentage", overallPercentage
+        );
     }
 
     private double percentage(
